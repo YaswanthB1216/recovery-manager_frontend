@@ -89,6 +89,10 @@ body {
   --transition: all 0.2s ease-in-out;
 }
 
+.main-layout{
+  background-color: #f8fafc;
+}
+
 /* Utility classes */
 .flex {
   display: flex;
@@ -665,8 +669,7 @@ body {
 .sidebar {
   width: 280px;
   height: 100vh;
-  /* background-color: var(--navy); */
-  background-color: #f9f9f9 !important;
+  background-color: #f9f9f9;
   border-right: 1px solid var(--gray-700);
   position: fixed;
   left: 0;
@@ -893,7 +896,7 @@ body {
   align-items: center;
   gap: var(--spacing-3);
   padding: var(--spacing-3) var(--spacing-4);
-  color: var(--slate-lighter);
+  color: #000;
   text-decoration: none;
   border-radius: var(--radius-md);
   transition: var(--transition);
