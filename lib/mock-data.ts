@@ -197,6 +197,8 @@
 // }
 
 
+const live_url = "https://recovery-agent-kaara-tech.lemoncoast-3e44e81a.eastus2.azurecontainerapps.io"
+
 export interface CustomerRecord {
   id: string
   bank_name: string
@@ -240,9 +242,11 @@ export interface PhoneCallResponse{
 }
 
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN || '';
-const HUBSPOT_API_URL = 'http://localhost:8000/api/hubspot-contacts';
+// const HUBSPOT_API_URL = 'http://localhost:8000/api/hubspot-contacts';
+const HUBSPOT_API_URL = `${live_url}/api/hubspot-contacts`;
 
-const INITIATE_CALL_URL = "http://localhost:8000/initiate-call"
+// const INITIATE_CALL_URL = "http://localhost:8000/initiate-call"
+const INITIATE_CALL_URL = `${live_url}/initiate-call`
 
 const properties = [
   'bank_name',
@@ -399,6 +403,7 @@ export async function fetchCustomer(id: string): Promise<CustomerRecord | null> 
 //   }
 // }
 
+
 export interface CallLog {
   callId: string;
   customer_id: string;
@@ -454,7 +459,7 @@ export async function fetchCallLogs(customer_name: string): Promise<CallLog[]> {
     // Fetch each call log for each call_id
     const callLogPromises = reverseCallIds.map(async (callId: string): Promise<CallLog | null> => {
       try {
-        const response = await fetch(`http://localhost:8000/call/${callId}`, {
+        const response = await fetch(`${live_url}/call/${callId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -532,7 +537,7 @@ export async function fetchTranscriptions(customer_name: string): Promise<Transc
     // Fetch each call log for each call_id
     const callLogPromises = reverseCallIds.map(async (callId: string): Promise<TranscriptLog[]> => {
       try {
-        const response = await fetch(`http://localhost:8000/fetch-transcript/${callId}`, {
+        const response = await fetch(`${live_url}/fetch-transcript/${callId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
