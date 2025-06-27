@@ -2,10 +2,11 @@
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { useVoiceAssistant } from "@/contexts/voice-assistant-context"
-import { fetchCustomers, fetchCallLogs, type CustomerRecord, type CallLog } from "@/lib/mock-data"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { fetchCustomers, fetchCallLogs, type CustomerRecord, type CallLog, initateCall, fetchTranscriptions, TranscriptLog } from "@/lib/mock-data"
+import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { Search, Phone, Eye, PhoneCall, Play, FileText, Clock, ChevronDown, X } from "@/components/ui/icons"
+import { toast,Toaster } from "sonner"
 
 function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
@@ -17,6 +18,10 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerRecord[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null)
   const [customerCallLogs, setCustomerCallLogs] = useState<CallLog[]>([])
+
+  const [transcriptions, setTranscriptions] = useState<TranscriptLog[]>([])
+  const [visibleTranscripts, setVisibleTranscripts] = useState<{ [key: string]: boolean }>({}) // New state for transcript
+  
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState<string>("due_date")
@@ -44,7 +49,7 @@ export default function CustomersPage() {
         customer.bank_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phone_number.includes(searchTerm)
 
-      const matchesStatus = statusFilter === "all" || customer.call_status === statusFilter
+      const matchesStatus = statusFilter === "all" || customer.call_status.toLowerCase() === statusFilter.toLowerCase()
 
       return matchesSearch && matchesStatus
     })
@@ -69,18 +74,54 @@ export default function CustomersPage() {
     setSelectedCustomer(customer)
     setIsDialogOpen(true)
     setActiveTab("details")
-    const logs = await fetchCallLogs(customer.id)
-    setCustomerCallLogs(logs)
+    setTranscriptions([])
+    setVisibleTranscripts({})
+    try{
+      const logs = await fetchCallLogs(customer.customer_name)
+      setCustomerCallLogs(logs)
+      const transcriptData = await fetchTranscriptions(customer.customer_name)
+      console.log("transcription dat loading",transcriptData)
+      setTranscriptions(transcriptData)
+    }catch (error) {
+      console.error("Error fetching data:", error)
+    }
+  }
+
+  const handlePhoneCall = async(customer: CustomerRecord) =>{
+    try{
+      console.log("handlePhoneCall method called...")
+      const callResponse = await initateCall(customer.customer_name)
+      console.log("call response...",callResponse)
+      toast.success(`Calling to ${customer.customer_name}`,{
+        duration:3000,
+        position:"top-right"
+      })
+    }
+    catch(error){
+      console.log(`error calling to ${customer.customer_name}`)
+      toast.error(`Failed to call ${customer.customer_name}`,{
+        duration:3000,
+        position:"top-right"
+      })
+    }
+    
+  }
+
+  const handleShowConversations = (callId: string) => {
+    setVisibleTranscripts((prev) => ({
+      ...prev,
+      [callId]: !prev[callId],
+    }))
   }
 
   const getStatusBadge = (status: string) => {
     const baseClasses = "badge"
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "pending":
         return `${baseClasses} badge-pending`
-      case "completed":
+      case "connected":
         return `${baseClasses} badge-completed`
-      case "failed":
+      case "no answer":
         return `${baseClasses} badge-failed`
       case "in_progress":
         return `${baseClasses} badge-in-progress`
@@ -132,8 +173,8 @@ export default function CustomersPage() {
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
+                  <option value="connected">Completed</option>
+                  <option value="no answer">Failed</option>
                   <option value="in_progress">In Progress</option>
                 </select>
                 <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
@@ -235,6 +276,7 @@ export default function CustomersPage() {
                               <Eye size={12} />
                             </button>
                             <button
+                              onClick={()=>handlePhoneCall(customer)}
                               className="button button-outline button-sm"
                               style={{ width: "2rem", height: "2rem", padding: 0 }}
                             >
@@ -403,7 +445,7 @@ export default function CustomersPage() {
                             </div>
                           ) : (
                             customerCallLogs.map((log) => (
-                              <div key={log.id} className="card">
+                              <div key={log.callId} className="card">
                                 <div className="card-content p-4">
                                   <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
@@ -411,31 +453,31 @@ export default function CustomersPage() {
                                         <Phone size={16} className="text-slate-600" />
                                       </div>
                                       <div>
-                                        <p className="font-medium text-slate-900">{formatDate(log.date)}</p>
-                                        <p className="text-sm text-slate-500">Agent: {log.agent_name}</p>
+                                        <p className="font-medium text-slate-900">{formatDate(log.created)}</p>
+                                        <p className="text-sm text-slate-500">{formatTime(log.created)}</p>
                                       </div>
                                     </div>
                                     <div className="text-right">
                                       <span
                                         className={`badge ${
-                                          log.status === "completed"
+                                          log.endReason === "completed"
                                             ? "badge-completed"
-                                            : log.status === "missed"
+                                            : log.endReason === "unjoined"
                                               ? "badge-failed"
                                               : "badge-pending"
                                         }`}
                                       >
-                                        {log.status}
+                                        {log.endReason}
                                       </span>
-                                      {log.duration > 0 && (
+                                      {log.maxDuration &&(
                                         <p className="text-sm text-slate-500 mt-1">
-                                          Duration: {formatDuration(log.duration)}
+                                          Duration: {log.maxDuration}
                                         </p>
                                       )}
                                     </div>
                                   </div>
-                                  {log.notes && (
-                                    <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md">{log.notes}</p>
+                                  {log.shortSummary && (
+                                    <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md">{log.shortSummary}</p>
                                   )}
                                 </div>
                               </div>
@@ -446,20 +488,20 @@ export default function CustomersPage() {
 
                       {activeTab === "recordings" && (
                         <div className="space-y-4">
-                          {customerCallLogs.filter((log) => log.recording_url || log.transcript).length === 0 ? (
+                          {customerCallLogs.filter((log) => log.recording_url || log.callId).length === 0 ? (
                             <div className="text-center py-8 text-slate-500">
                               <FileText size={48} className="mx-auto mb-4 text-slate-300" />
                               <p>No recordings or transcripts available</p>
                             </div>
                           ) : (
                             customerCallLogs
-                              .filter((log) => log.recording_url || log.transcript)
+                              .filter((log) => log.recording_url || log.callId)
                               .map((log) => (
-                                <div key={log.id} className="card">
+                                <div key={log.callId} className="card">
                                   <div className="card-header">
                                     <h3 className="text-sm font-medium flex items-center gap-2">
                                       <Clock size={16} />
-                                      {formatDate(log.date)} - {log.agent_name}
+                                      {formatDate(log.created)} - {formatTime(log.created)}
                                     </h3>
                                   </div>
                                   <div className="card-content space-y-4">
@@ -472,21 +514,53 @@ export default function CustomersPage() {
                                             Play Recording
                                           </button>
                                           <span className="text-sm text-slate-500">
-                                            Duration: {formatDuration(log.duration)}
+                                            Duration: {formatDuration(log.maxDuration)}
                                           </span>
                                         </div>
                                       </div>
                                     )}
-                                    {log.transcript && (
-                                      <div>
-                                        <h4 className="text-sm font-medium text-slate-700 mb-2">
-                                          Conversation Transcript
-                                        </h4>
-                                        <div className="p-4 bg-slate-50 rounded-md">
-                                          <p className="text-sm text-slate-700 whitespace-pre-wrap">{log.transcript}</p>
-                                        </div>
+                                    <div>
+                                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-md">
+                                        <span className="text-sm font-medium text-slate-700">
+                                          Call ID: {log.callId}
+                                        </span>
+                                        <button
+                                          onClick={() => handleShowConversations(log.callId)}
+                                          className="button button-outline button-sm"
+                                        >
+                                          {visibleTranscripts[log.callId] ? "Hide Conversations" : "Show Conversations"}
+                                        </button>
                                       </div>
-                                    )}
+                                      {visibleTranscripts[log.callId] && (
+                                        <div className="p-4 bg-slate-50 rounded-md mt-2">
+                                          {transcriptions
+                                            .filter((transcript) => transcript.callStageId === log.callId)
+                                            .length > 0 ? (
+                                            transcriptions
+                                              .filter((transcript) => transcript.callStageId === log.callId)
+                                              .map((transcript, index) => (
+                                                <div
+                                                  key={index}
+                                                  className={`mb-2 p-2 rounded-md ${
+                                                    transcript.role === "MESSAGE_ROLE_USER"
+                                                      ? "bg-blue-100 text-blue-800"
+                                                      : "bg-green-100 text-green-800"
+                                                  }`}
+                                                >
+                                                  <p className="text-sm font-semibold">
+                                                    {transcript.role === "MESSAGE_ROLE_USER" ? selectedCustomer.customer_name+":" : "Recovery Manager:"}
+                                                  </p>
+                                                  <p className="text-sm whitespace-pre-wrap">{transcript.text}</p>
+                                                </div>
+                                              ))
+                                          ) : (
+                                            <p className="text-sm text-slate-700">
+                                              No conversations available
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ))
@@ -501,6 +575,7 @@ export default function CustomersPage() {
           </div>
         )}
       </div>
+      <Toaster position="top-right" />
     </DashboardLayout>
   )
 }

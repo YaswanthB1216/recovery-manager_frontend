@@ -222,19 +222,27 @@ export interface CustomerRecord {
 }
 
 export interface CallLog {
-  id: string
+  callId: string
   customer_id: string
-  date: string
-  duration: number
-  status: "completed" | "missed" | "busy"
-  agent_name: string
-  recording_url?: string
-  transcript?: string
-  notes: string
+  created: string
+  ended: string
+  endReason: string
+  maxDuration:number
+  voice:string
+  shortSummary?:string
+}
+
+export interface PhoneCallResponse{
+  "call_sid":string,
+  "join_url":string,
+  "call_id":string,
+  "message":string
 }
 
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN || '';
 const HUBSPOT_API_URL = 'http://localhost:8000/api/hubspot-contacts';
+
+const INITIATE_CALL_URL = "http://localhost:8000/initiate-call"
 
 const properties = [
   'bank_name',
@@ -318,11 +326,297 @@ export async function fetchCustomer(id: string): Promise<CustomerRecord | null> 
   return customers.find(customer => customer.id === id) || null;
 }
 
-// Note: CallLog fetching would require a different HubSpot object type (likely custom object or engagements)
-// This implementation assumes CallLogs are not stored in the same contacts endpoint
-export async function fetchCallLogs(customerId: string): Promise<CallLog[]> {
-  // Placeholder for CallLog API implementation
-  // Would need to know the specific HubSpot endpoint for call logs
-  console.warn('CallLog fetching not implemented - requires specific HubSpot endpoint');
-  return [];
+// export async function fetchCallLogs(customer_name: string): Promise<CallLog[]> {
+//   try {
+//     // Retrieve customer data from localStorage
+//     const local_customers_raw_data = localStorage.getItem('customers');
+//     if (!local_customers_raw_data) {
+//       console.log('No customers data found in localStorage');
+//       return [];
+//     }
+
+//     let local_customers_data;
+//     try {
+//       local_customers_data = JSON.parse(local_customers_raw_data);
+//     } catch (e) {
+//       console.warn('Invalid customers data format in localStorage:', e);
+//       return [];
+//     }
+
+//     // Check if local_customers_data is a valid object
+//     if (!local_customers_data || typeof local_customers_data !== 'object') {
+//       console.warn('Invalid customers data format in localStorage');
+//       return [];
+//     }
+
+//     // Check if callIds exist for the customer
+//     const callIds = local_customers_data[customer_name] || [];
+//     if (!callIds || !Array.isArray(callIds) || callIds.length === 0) {
+//       console.log(`No call IDs found for customer ${customer_name}`);
+//       return [];
+//     }
+
+//     // Fetch each call log for each call_id
+//     const callLogPromises = callIds.map(async (callId: string) => {
+//       try {
+//         const response = await fetch(`http://localhost:8001/call/${callId}`, {
+//           method: 'GET',
+//           headers: {
+//             'Content-Type': 'application/json',
+//           },
+//         });
+
+//         if (!response.ok) {
+//           console.error(`Error fetching call log for call_id ${callId}: ${response.statusText}`);
+//           return null; // Return null for failed requests
+//         }
+
+//         const responseData = await response.json();
+//         const log = responseData.data || responseData.results || responseData || {};
+
+//         return {
+//             callId: log.callId,
+//             created:log.created,
+//             ended:log.ended,
+//             endReason: log.endReason,
+//             maxDuration:log.maxDuration,
+//             voice:log.voice,
+//             shortSummary:log.shortSummary?? ''
+//         };
+//       } catch (error) {
+//         console.error(`Error fetching call log for call_id ${callId}:`, error);
+//         return null;
+//       }
+//     });
+
+//     // Wait for all API calls to complete and filter out null results
+//     const callLogs = (await Promise.all(callLogPromises)).filter((log): log is CallLog => log !== null);
+
+//     return callLogs;
+//   } catch (error) {
+//     console.error('Error fetching call logs from API:', error);
+//     return [];
+//   }
+// }
+
+export interface CallLog {
+  callId: string;
+  customer_id: string;
+  created: string;
+  ended: string;
+  endReason: string;
+  maxDuration: number;
+  voice: string;
+  shortSummary?: string; // Optional
+  recording_url:string
+}
+
+export interface TranscriptLog {
+  role: string;
+  text: string;
+  callStageId: string;
+  customer_id: string;
+}
+
+export async function fetchCallLogs(customer_name: string): Promise<CallLog[]> {
+  try {
+    // Retrieve customer data from localStorage
+    const local_customers_raw_data = localStorage.getItem('customers');
+    if (!local_customers_raw_data) {
+      console.log('No customers data found in localStorage');
+      return [];
+    }
+
+    let local_customers_data;
+    try {
+      local_customers_data = JSON.parse(local_customers_raw_data);
+    } catch (e) {
+      console.warn('Invalid customers data format in localStorage:', e);
+      return [];
+    }
+
+    // Check if local_customers_data is a valid object
+    if (!local_customers_data || typeof local_customers_data !== 'object') {
+      console.warn('Invalid customers data format in localStorage');
+      return [];
+    }
+
+    // Check if callIds exist for the customer
+    const callIds = local_customers_data[customer_name] || [];
+    if (!callIds || !Array.isArray(callIds) || callIds.length === 0) {
+      console.log(`No call IDs found for customer ${customer_name}`);
+      return [];
+    }
+
+    // To get the latest callId first
+    const reverseCallIds = [...callIds].reverse();
+
+    // Fetch each call log for each call_id
+    const callLogPromises = reverseCallIds.map(async (callId: string): Promise<CallLog | null> => {
+      try {
+        const response = await fetch(`http://localhost:8000/call/${callId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          console.error(`Error fetching call log for call_id ${callId}: ${response.statusText}`);
+          return null;
+        }
+
+        const responseData = await response.json();
+        const log = responseData.data || responseData.results || responseData || {};
+
+        return {
+          callId: log.callId,
+          customer_id: customer_name, // Use customer_name from the function parameter
+          created: log.created,
+          ended: log.ended,
+          endReason: log.endReason,
+          maxDuration: log.maxDuration,
+          voice: log.voice,
+          shortSummary: log.shortSummary ?? '', // Default to empty string if undefined
+          recording_url:''
+        };
+      } catch (error) {
+        console.error(`Error fetching call log for call_id ${callId}:`, error);
+        return null;
+      }
+    });
+
+    // Resolve all promises and filter out null results
+    const callLogs = (await Promise.all(callLogPromises)).filter((log): log is CallLog => log !== null);
+
+    return callLogs;
+  } catch (error) {
+    console.error('Unexpected error in fetchCallLogs:', error);
+    return [];
+  }
+}
+
+export async function fetchTranscriptions(customer_name: string): Promise<TranscriptLog[]> {
+  try {
+    // Retrieve customer data from localStorage
+    const local_customers_raw_data = localStorage.getItem('customers');
+    if (!local_customers_raw_data) {
+      console.log('No customers data found in localStorage');
+      return [];
+    }
+
+    let local_customers_data;
+    try {
+      local_customers_data = JSON.parse(local_customers_raw_data);
+    } catch (e) {
+      console.warn('Invalid customers data format in localStorage:', e);
+      return [];
+    }
+
+    // Check if local_customers_data is a valid object
+    if (!local_customers_data || typeof local_customers_data !== 'object') {
+      console.warn('Invalid customers data format in localStorage');
+      return [];
+    }
+
+    // Check if callIds exist for the customer
+    const callIds = local_customers_data[customer_name] || [];
+    if (!callIds || !Array.isArray(callIds) || callIds.length === 0) {
+      console.log(`No call IDs found for customer ${customer_name}`);
+      return [];
+    }
+
+    // To get the latest callId first
+    const reverseCallIds = [...callIds].reverse();
+
+    // Fetch each call log for each call_id
+    const callLogPromises = reverseCallIds.map(async (callId: string): Promise<TranscriptLog[]> => {
+      try {
+        const response = await fetch(`http://localhost:8000/fetch-transcript/${callId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          console.error(`Error fetching call log for call_id ${callId}: ${response.statusText}`);
+          return [];
+        }
+
+        const responseData = await response.json();
+        console.log("response Data..",responseData)
+        const results = responseData.results || [];
+        console.log("results..",results)
+
+        // The first object in results should contain call_id
+        const call_id = results[0]?.call_id;
+        if (!call_id) {
+          console.warn(`No call_id found in results for call_id ${callId}`);
+          return [];
+        }
+      // Map transcription objects, using call_id as callStageId
+      return results
+        .filter((log: any) => log.role && log.text) // Only include objects with role and text
+        .map((log: any) => ({
+          role: log.role,
+          text: log.text,
+          callStageId: call_id, // Use call_id from the first object
+          customer_id: customer_name,
+        }));
+      } catch (error) {
+        console.error(`Error fetching call log for call_id ${callId}:`, error);
+        return [];
+      }
+    });
+
+    // Resolve all promises and filter out null results
+    const callLogs = (await Promise.all(callLogPromises)).flat().filter((log): log is TranscriptLog => log !== null);
+    console.log("callLogs...",callLogs)
+    return callLogs;
+  } catch (error) {
+    console.error('Unexpected error in fetchCallLogs:', error);
+    return [];
+  }
+}
+
+export async function initateCall(customerName:string): Promise<PhoneCallResponse[]>{
+  try {
+    const payload = {
+      customer_name:customerName
+    }
+
+    const response = await fetch(`${INITIATE_CALL_URL}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if(!response.ok){
+      throw new Error(`Initiate call error: ${response.statusText}`);
+    }
+    const responseData = await response.json();
+    // Retrieve existing customers data from localStorage
+    let customers = JSON.parse(localStorage.getItem('customers') || '{}');
+    console.log(customers)
+
+    // Initialize array for customer if it doesn't exist
+    if (!customers[customerName]) {
+      customers[customerName] = [];
+    }
+
+    // Append the new call_id if it's not already in the array
+    if (!customers[customerName].includes(responseData.call_id)) {
+      customers[customerName].push(responseData.call_id);
+    }
+
+    // Save updated data back to localStorage
+    localStorage.setItem('customers', JSON.stringify(customers));
+    return responseData
+  }
+  catch(error){
+    return []
+  }
 }

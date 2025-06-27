@@ -34,7 +34,7 @@ export default function DashboardPage() {
         customer.bank_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phone_number.includes(searchTerm)
 
-      const matchesStatus = statusFilter === "all" || customer.call_status === statusFilter
+      const matchesStatus = statusFilter === "all" || customer.call_status.toLowerCase() === statusFilter.toLowerCase()
 
       return matchesSearch && matchesStatus
     })
@@ -58,7 +58,7 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     const totalOutstanding = customers.reduce((sum, customer) => sum + customer.outstanding_amount, 0)
     const totalCustomers = customers.length
-    const pendingCalls = customers.filter((c) => c.call_status === "pending").length
+    const pendingCalls = customers.filter((c) => c.call_status === "pending" || "Pending").length
     const overdueCustomers = customers.filter((c) => c.dpd_days > 30).length
 
     return {
@@ -71,12 +71,12 @@ export default function DashboardPage() {
 
   const getStatusBadge = (status: string) => {
     const baseClasses = "badge"
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "pending":
         return `${baseClasses} badge-pending`
-      case "completed":
+      case "connected":
         return `${baseClasses} badge-completed`
-      case "failed":
+      case "no answer":
         return `${baseClasses} badge-failed`
       case "in_progress":
         return `${baseClasses} badge-in-progress`
@@ -182,8 +182,8 @@ export default function DashboardPage() {
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
+                  <option value="connected">Completed</option>
+                  <option value="No answer">Failed</option>
                   <option value="in_progress">In Progress</option>
                 </select>
                 <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
@@ -216,7 +216,7 @@ export default function DashboardPage() {
                     <th className="text-xs sm:text-sm">Due Date</th>
                     <th className="text-xs sm:text-sm">DPD</th>
                     <th className="text-xs sm:text-sm">Status</th>
-                    <th className="text-xs sm:text-sm">Actions</th>
+                    {/* <th className="text-xs sm:text-sm">Actions</th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -276,7 +276,7 @@ export default function DashboardPage() {
                             {customer.call_status.replace("_", " ")}
                           </span>
                         </td>
-                        <td>
+                        {/* <td>
                           <div className="flex items-center gap-1 sm:gap-2">
                             <button
                               className="button button-outline button-sm"
@@ -291,7 +291,7 @@ export default function DashboardPage() {
                               <PhoneCall size={12} />
                             </button>
                           </div>
-                        </td>
+                        </td> */}
                       </tr>
                     ))
                   )}

@@ -15,6 +15,9 @@ body {
 /* CSS Variables */
 :root {
   /* Colors */
+  --black:#000000;
+  --dusty-gray:#6b7280;
+  --pale-tarquoise: #EBF3F2;
   --navy: #1e293b;
   --navy-light: #334155;
   --slate: #475569;
@@ -360,12 +363,24 @@ body {
   color: var(--red-600);
 }
 
+.text-dusty-gray{
+  color: var(--dusty-gray);
+}
+.text-black{
+  color: var(--black);
+}
+
 .bg-white {
   background-color: var(--white);
 }
 .bg-navy {
   background-color: var(--navy);
 }
+
+.bg-pale-tarquoise{
+  background-color: var(--pale-tarquoise);
+}
+
 .bg-navy-light {
   background-color: var(--navy-light);
 }
@@ -704,7 +719,7 @@ body {
 
 .card-content {
   padding: var(--spacing-6);
-  padding-top: 0;
+  /* padding-top: 0; */
 }
 
 .button {

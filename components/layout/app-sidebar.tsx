@@ -74,20 +74,20 @@ export function AppSidebar() {
             </div>
           </div>
 
-          <div style={{ height: "1px", backgroundColor: "var(--gray-700)", margin: "0.75rem 0" }}></div>
+          <div style={{ height: "1px", margin: "0.75rem 0" }}></div>
 
           <div>
             <div
-              className="text-slate-400 text-xs font-semibold mb-2"
+              className="text-dusty-gray text-xs font-semibold mb-2"
               style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
             >
               AI Assistant
             </div>
-            <div className="p-3 bg-navy-light rounded-lg">
+            <div className="p-3 bg-pale-tarquoise rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Mic size={15} className="text-slate-300" />
-                  <span className="text-slate-300 text-sm">Voice Assistant</span>
+                  <span className="text-black text-sm">Voice Assistant</span>
                 </div>
                 <button
                   onClick={toggleAssistant}
@@ -105,7 +105,7 @@ export function AppSidebar() {
               {activeCalls.length > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-black">
                     {activeCalls.length} active call{activeCalls.length > 1 ? "s" : ""}
                   </span>
                 </div>
@@ -115,13 +115,13 @@ export function AppSidebar() {
         </div>
 
         <div className="p-3">
-          <div className="flex items-center gap-3 p-3 bg-navy-light rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-pale-tarquoise rounded-lg">
             <div className="w-7 h-7 bg-slate-200 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-slate-600">{user?.name?.charAt(0) || "U"}</span>
+              <span className="text-black text-sm font-medium">{user?.name?.charAt(0) || "U"}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-slate-400 text-xs truncate">{user?.email}</p>
+              <p className="text-black text-sm font-medium truncate">{user?.name}</p>
+              <p className="text-black text-xs truncate">{user?.email}</p>
             </div>
             <button
               onClick={logout}

@@ -15,6 +15,7 @@ body {
 /* CSS Variables */
 :root {
   /* Colors */
+  --pale-tarquoise: #EBF3F2;
   --navy: #1e293b;
   --navy-light: #334155;
   --slate: #475569;

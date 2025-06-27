@@ -15,6 +15,16 @@ export function formatDate(dateString: string): string {
   })
 }
 
+// Format time (new function)
+export function formatTime(dateString: string): string {
+  return new Date(dateString).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true, // Use 12-hour format with AM/PM
+  });
+}
+
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(" ")
 }
