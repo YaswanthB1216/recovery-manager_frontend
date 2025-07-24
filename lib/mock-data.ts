@@ -197,7 +197,9 @@
 // }
 
 
-const live_url = "https://recovery-agent-kaara-tech.lemoncoast-3e44e81a.eastus2.azurecontainerapps.io"
+// const live_url = "https://recovery-agent-kaara-tech.lemoncoast-3e44e81a.eastus2.azurecontainerapps.io"
+// const live_url = "http://localhost:8000"
+const live_url = "https://recovery-agent.lemonglacier-2b0560d0.southindia.azurecontainerapps.io"
 
 export interface CustomerRecord {
   id: string
